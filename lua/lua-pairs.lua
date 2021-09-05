@@ -151,7 +151,7 @@ end
 -- @param hashtable pair_table Defined pairs to index
 -- @return bool True if the cursor is surrounded by pair in `pair_table`
 local function is_sur(pair_table)
-    local last_char = get_ctxt('l')
+    local last_char = get_ctxt('p')
     return pair_table[last_char] and vim.b.lp_buf[last_char] == get_ctxt('n')
 end
 
@@ -293,7 +293,7 @@ end
 -- @param string quote Left part of a pair of 'quote'.
 -- @return nil
 function M.lp_quote(quote)
-    local last_char = get_ctxt('l')
+    local last_char = get_ctxt('p')
     local next_char = get_ctxt('n')
     local keys
     if (next_char == quote and
