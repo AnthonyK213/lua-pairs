@@ -83,7 +83,11 @@ local function get_ctxt(mode)
     local pat = get_ctxt_pat[mode]
     local line = vim.api.nvim_get_current_line()
     local s, e = vim.regex(pat[1]..vim.fn.col('.')..pat[2]):match_str(line)
-    return line:sub(s + 1, e)
+    if s then
+        return line:sub(s + 1, e)
+    else
+        return ""
+    end
 end
 
 -- Define the buffer variables.
