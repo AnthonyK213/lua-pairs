@@ -72,18 +72,18 @@ end
 --   'b' -> Return the half line before cursor
 --   'f' -> Return the half line after cursor
 -- @return string Grabbed string around the cursor
-local get_ctxt_arg = {
-    l = { '.\\%', 'c' },
-    n = { '\\%', 'c.' },
-    b = { '^.*\\%', 'c' },
-    f = { '\\%', 'c.*$' },
+local get_ctxt_pat = {
+    p = { [[.\%]], [[c]] },
+    n = { [[\%]], [[c.]] },
+    b = { [[^.*\%]], 'c' },
+    f = { [[\%]], 'c.*$' }
 }
 
 local function get_ctxt(mode)
-    local arg_table = get_ctxt_arg[mode]
-    return fn.matchstr(
-    api.nvim_get_current_line(),
-    arg_table[1]..fn.col('.')..arg_table[2])
+    local pat = get_ctxt_pat[mode]
+    local line = vim.api.nvim_get_current_line()
+    local s, e = vim.regex(pat[1]..vim.fn.col('.')..pat[2]):match_str(line)
+    return line:sub(s + 1, e)
 end
 
 -- Define the buffer variables.
