@@ -67,10 +67,10 @@ end
 
 -- Get characters around the cursor by 'mode'.
 -- @param string mode Four modes to get the context
---   'l' -> Return the character before cursor
---   'n' -> Return the character after cursor
---   'b' -> Return the half line before cursor
---   'f' -> Return the half line after cursor
+--   'p' -> Return the character before cursor (previous)
+--   'n' -> Return the character after cursor  (next)
+--   'b' -> Return the half line before cursor (backward)
+--   'f' -> Return the half line after cursor  (forward)
 -- @return string Grabbed string around the cursor
 local get_ctxt_pat = {
     p = { [[.\%]], [[c]] },
