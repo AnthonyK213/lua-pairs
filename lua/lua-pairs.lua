@@ -286,8 +286,8 @@ end
 
 -- Complete 'quote':
 --   | -> feed " -> "|"
--- Inside a pair of 'quote':
---   "|" -> feed " -> ""|
+-- Next character is 'quote':
+--   |" -> feed " -> "|
 -- After the escape character("\"), a 'quote' character or a NAC character:
 --   \| -> feed " -> \"|
 --   "| -> feed " -> ""|
@@ -300,9 +300,7 @@ function M.lp_quote(quote)
     local last_char = get_ctxt('p')
     local next_char = get_ctxt('n')
     local keys
-    if (next_char == quote and
-        (last_char == quote or
-        is_NAC(last_char))) then
+    if next_char == quote then
         keys = right
     elseif (last_char == quote or
         is_NAC(last_char) or
