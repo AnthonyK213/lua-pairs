@@ -6,7 +6,6 @@
 local M = {}
 local vim = vim
 local api = vim.api
-local fn  = vim.fn
 
 local opt = {}
 local lp_comm={ ["("]=")", ["["]=']', ["{"]="}", ["'"]="'", ['"']='"' }
@@ -43,7 +42,7 @@ end
 -- @param string(char) char A character to be tested
 -- @return bool True if the character is a NAC
 local function is_NAC(char)
-    local nr = fn.char2nr(char)
+    local nr = vim.fn.char2nr(char)
     return char:match('[%w_]') or (nr >= 0x4E00 and nr <= 0x9FFF)
 end
 
@@ -51,14 +50,14 @@ end
 -- @param string str String to be converted to be a regex match pattern
 -- @return string Converted string
 local function reg_esc(str)
-    local str_list = fn.split(str, '\\zs')
+    local str_list = vim.fn.split(str, '\\zs')
     local esc_table = {
         '(', ')', '[', ']',
         '+', '-', '*', '?',
         '.', '%', '^', '$'
     }
     for i, v in ipairs(str_list) do
-        if fn.index(esc_table, v) >= 0 then
+        if vim.tbl_contains(esc_table, v) then
             str_list[i] = '%'..v
         end
     end
@@ -82,7 +81,8 @@ local get_ctxt_pat = {
 local function get_ctxt(mode)
     local pat = get_ctxt_pat[mode]
     local line = vim.api.nvim_get_current_line()
-    local s, e = vim.regex(pat[1]..vim.fn.col('.')..pat[2]):match_str(line)
+    local s, e = vim.regex(
+    pat[1]..(api.nvim_win_get_cursor(0)[2] + 1)..pat[2]):match_str(line)
     if s then
         return line:sub(s + 1, e)
     else
@@ -110,7 +110,7 @@ local function def_var()
     vim.b.lp_last_spec = "[\"'\\]"
     vim.b.lp_next_spec = "[\"']"
     vim.b.lp_back_spec = "[^%s%S]"
-    local lp_buf = fn.copy(lp_comm)
+    local lp_buf = vim.deepcopy(lp_comm)
     local lp_buf_map = {
         ["<CR>"]    = "enter",
         ["<BS>"]    = "backs",
@@ -164,7 +164,7 @@ end
 -- @param string key Key to feed to the buffer
 -- @return nil
 local function def_map(kbd, key)
-    local k = key:match('<%u.*>') and '' or '"'..fn.escape(key, '"')..'"'
+    local k = key:match('<%u.*>') and '' or '"'..vim.fn.escape(key, '"')..'"'
     api.nvim_buf_set_keymap(
     0, 'i', kbd,
     '<CMD>lua require("lua-pairs").lp_'..vim.b.lp_buf_map[key]..'('..k..')<CR>',
