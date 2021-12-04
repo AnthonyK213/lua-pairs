@@ -16,61 +16,34 @@ local right = '<C-g>U<Right>'
 
 ---------- Local functions ---------
 
--- Extend table b to a.
--- @param table a Table to be extended
--- @param table b Table to extend
--- @return nil
+--- Extend table b to a.
+--- @param a table Table to be extended.
+--- @param b table Table to extend.
 local tab_extd = function(a, b)
     for key, val in pairs(b) do a[key] = val end
 end
 
--- Convert string to terminal codes.
--- @param string str String to be converted
--- @return string Converted string, can be used as terminal code.
+--- Convert string to terminal codes.
+--- @param str string String to be converted.
+--- @return string terminal_code Termianl code.
 local rep_term = function(str)
     return api.nvim_replace_termcodes(str, true, false, true)
 end
 
--- Feed keys to current buffer.
--- @param string str Operation as string to feed to buffer.
--- @return nil
+--- Feed keys to current buffer.
+--- @param str string Operation as string to feed to buffer.
 local feed_keys = function(str)
     api.nvim_feedkeys(rep_term(str), 'n', true)
 end
 
--- Determine if a character is a numeric/alphabetic/CJK(NAC) character.
--- @param string(char) char A character to be tested
--- @return bool True if the character is a NAC
+--- Determine if a character is a numeric/alphabetic/CJK(NAC) character.
+--- @param char string A character to be tested.
+--- @return boolean result True if the character is a NAC.
 local function is_NAC(char)
     local nr = vim.fn.char2nr(char)
     return char:match('[%w_]') or (nr >= 0x4E00 and nr <= 0x9FFF)
 end
 
--- Escape regex special characters in a string by '%'.
--- @param string str String to be converted to be a regex match pattern
--- @return string Converted string
-local function reg_esc(str)
-    local str_list = vim.fn.split(str, '\\zs')
-    local esc_table = {
-        '(', ')', '[', ']',
-        '+', '-', '*', '?',
-        '.', '%', '^', '$'
-    }
-    for i, v in ipairs(str_list) do
-        if vim.tbl_contains(esc_table, v) then
-            str_list[i] = '%'..v
-        end
-    end
-    return table.concat(str_list)
-end
-
--- Get characters around the cursor by 'mode'.
--- @param string mode Four modes to get the context
---   'p' -> Return the character before cursor (previous)
---   'n' -> Return the character after cursor  (next)
---   'b' -> Return the half line before cursor (backward)
---   'f' -> Return the half line after cursor  (forward)
--- @return string Grabbed string around the cursor
 local get_ctxt_pat = {
     p = { [[.\%]], [[c]] },
     n = { [[\%]], [[c.]] },
@@ -78,6 +51,13 @@ local get_ctxt_pat = {
     f = { [[\%]], 'c.*$' }
 }
 
+--- Get characters around the cursor by `mode`.
+--- @param mode string Four modes to get the context.
+---   - *p* -> Return the character before cursor (previous);
+---   - *n* -> Return the character after cursor  (next);
+---   - *b* -> Return the half line before cursor (backward);
+---   - *f* -> Return the half line after cursor  (forward).
+--- @return string context Characters around the cursor.
 local function get_ctxt(mode)
     local pat = get_ctxt_pat[mode]
     local line = vim.api.nvim_get_current_line()
@@ -90,24 +70,22 @@ local function get_ctxt(mode)
     end
 end
 
--- Define the buffer variables.
--- @bufvar string     b:lp_last_spec No paifing if the last character matches
--- @bufvar string     b:lp_next_spec No pairing if the next character matches
--- @bufvar string     b:lp_back_spec No pairing if the left half line matches
--- @bufvar hashtable  b:lp_buf       { (string)pair_left = (string)pair_right }
--- @bufvar hashtable  b:lp_buf_map   { (string)key = (string)pair_type }
---   `pair_type`:
---     'enter' -> Enter/Return
---     'backs' -> Backspace
---     'supbs' -> Super backspace
---     'space' -> Space
---     'mates' -> A pair of characters consisting of different characters
---     'quote' -> A pair of characters consisting of identical characters
---     'close' -> Character to close a pair (right part of a pair)
--- @bufvar arraytable b:lp_map_list  { (string)keys_to_map }
--- @return nil
+--- Define the buffer variables.
+--- @bufvar lp_prev_spec string    No paifing if the previous character matches.
+--- @bufvar lp_next_spec string    No pairing if the next character matches.
+--- @bufvar lp_back_spec string    No pairing if the left half line matches.
+--- @bufvar lp_buf       hashtable { (string)pair_left = (string)pair_right }
+--- @bufvar lp_buf_map   hashtable { (string)key = (string)pair_type }
+---   - *enter* -> Enter/Return;
+---   - *backs* -> Backspace;
+---   - *supbs* -> Super backspace;
+---   - *space* -> Space;
+---   - *mates* -> A pair of characters consisting of different characters;
+---   - *quote* -> A pair of characters consisting of identical characters;
+---   - *close* -> Character to close a pair (right part of a pair).
+--- @bufvar lp_map_list  arraytable { (string)keys_to_map }
 local function def_var()
-    vim.b.lp_last_spec = "[\"'\\]"
+    vim.b.lp_prev_spec = "[\"'\\]"
     vim.b.lp_next_spec = "[\"']"
     vim.b.lp_back_spec = "[^%s%S]"
     local lp_buf = vim.deepcopy(lp_comm)
@@ -122,7 +100,7 @@ local function def_var()
     if vim.bo.filetype == 'vim' then
         vim.b.lp_back_spec = '^%s*$'
     elseif vim.bo.filetype == 'rust' then
-        vim.b.lp_last_spec = "[\"'\\&<]"
+        vim.b.lp_prev_spec = "[\"'\\&<]"
     elseif vim.bo.filetype == 'lisp' then
         table.insert(lp_map_list, '`')
         lp_buf["'"] = nil
@@ -151,47 +129,42 @@ local function def_var()
     vim.b.lp_map_list = lp_map_list
 end
 
--- Check the surrounding characters of the cursor.
--- @param hashtable pair_table Defined pairs to index
--- @return bool True if the cursor is surrounded by pair in `pair_table`
+--- Check the surrounding characters of the cursor.
+--- @param pair_table table Defined pairs to index.
+--- @return boolean result True if the cursor is surrounded by `pair_table`.
 local function is_sur(pair_table)
-    local last_char = get_ctxt('p')
-    return pair_table[last_char] and vim.b.lp_buf[last_char] == get_ctxt('n')
+    local prev_char = get_ctxt('p')
+    return pair_table[prev_char] and vim.b.lp_buf[prev_char] == get_ctxt('n')
 end
 
--- Difine buffer key maps.
--- @param string kbd Key binding
--- @param string key Key to feed to the buffer
--- @return nil
+--- Difine buffer key maps.
+--- @param kbd string Key binding.
+--- @param key string Key to feed to the buffer.
 local function def_map(kbd, key)
     local k = key:match('<%u.*>') and '' or '"'..vim.fn.escape(key, '"')..'"'
     api.nvim_buf_set_keymap(
     0, 'i', kbd,
     '<CMD>lua require("lua-pairs").lp_'..vim.b.lp_buf_map[key]..'('..k..')<CR>',
-    { noremap=true, expr=false, silent=true })
+    { noremap = true, expr = false, silent = true })
 end
 
 
 ---------- Module functions ---------
 
--- Clear key maps of current buffer according to `b:lp_map_list`.
--- @return nil
+--- Clear key maps of current buffer according to `b:lp_map_list`.
 function M.clr_map()
     if vim.b.lp_map_list then
         for _, key in ipairs(vim.b.lp_map_list) do
             api.nvim_buf_set_keymap(0, 'i', key, key,
-            { noremap=true, expr=false, silent=true })
+            { noremap = true, expr = false, silent = true })
         end
         vim.b.lp_map_list = nil
     end
 end
 
--- Actions on <CR>.
--- Inside a pair of brackets:
---   {|} -> feed <CR> -> {
---                           |
---                       }
--- @return nil
+--- Actions on <CR>.
+--- Inside a pair of brackets:
+---   {|} -> feed <CR> -> {<br>|<br>}
 function M.lp_enter()
     if is_sur(vim.b.lp_buf) then
         feed_keys('<CR><C-\\><C-O>O')
@@ -203,12 +176,11 @@ function M.lp_enter()
     end
 end
 
--- Actions on <BS>.
--- Inside a defined pair(1 character):
---   (|) -> feed <BS> -> |
--- Inside a pair of barces with one space:
---   { | } -> feed <BS> -> {|}
--- @return nil
+--- Actions on <BS>.
+--- Inside a defined pair(1 character):
+---   (|) -> feed <BS> -> |
+--- Inside a pair of barces with one space:
+---   { | } -> feed <BS> -> {|}
 function M.lp_backs()
     if is_sur(vim.b.lp_buf) then
         feed_keys(right..'<BS><BS>')
@@ -220,19 +192,18 @@ function M.lp_backs()
     end
 end
 
--- Super backspace.
--- Inside a defined pair(no length limit):
---   <u>|</u> -> feed <M-BS> -> |
--- Kill a word:
---   Kill a word| -> feed <M-BS> -> Kill a |
--- @return nil
+--- Super backspace.
+--- Inside a defined pair(no length limit):
+---   <u>|</u> -> feed <M-BS> -> |
+--- Kill a word:
+---   Kill a word| -> feed <M-BS> -> Kill a |
 function M.lp_supbs()
     local back = get_ctxt('b')
     local fore = get_ctxt('f')
     local res = { false, 0, 0 }
     for key, val in pairs(vim.b.lp_buf) do
-        if (back:match(reg_esc(key)..'$') and
-            fore:match('^'..reg_esc(val)) and
+        if (back:match(vim.pesc(key)..'$') and
+            fore:match('^'..vim.pesc(val)) and
             #key + #val > res[2] + res[3]) then
             res = { true, #key, #val }
         end
@@ -247,23 +218,21 @@ function M.lp_supbs()
     end
 end
 
--- Actions on <SPACE>.
--- Inside a pair of braces:
---   {|} -> feed <SPACE> -> { | }
--- @return nil
+--- Actions on <SPACE>.
+--- Inside a pair of braces:
+---   {|} -> feed <SPACE> -> { | }
 function M.lp_space()
     local keys = is_sur({ ['{']='}' }) and
     '<SPACE><SPACE>'..left or '<SPACE>'
     feed_keys(keys)
 end
 
--- Complete 'mates':
---   | -> feed ( -> (|)
---   | -> feed defined_kbd -> pair_a|pair_b
--- Before a NAC character:
---   |a -> feed ( -> (|a
--- @param string pair_a Left part of a pair of 'mates'
--- @return nil
+--- Complete *mates*:
+---   | -> feed ( -> (|)
+---   | -> feed defined_kbd -> pair_a|pair_b
+--- Before a NAC character:
+---   |a -> feed ( -> (|a
+--- @param pair_a string Left part of a pair of *mates*
 function M.lp_mates(pair_a)
     local keys
     if is_NAC(get_ctxt('n')) then
@@ -275,37 +244,35 @@ function M.lp_mates(pair_a)
     feed_keys(keys)
 end
 
--- Inside a defined pair:
---   (|) -> feed ) -> ()|
--- @param string pair_b Right part of a pair of 'mates'
--- @return nil
+--- Inside a defined pair:
+---   (|) -> feed ) -> ()|
+--- @param pair_b string Right part of a pair of *mates*
 function M.lp_close(pair_b)
     local keys = get_ctxt('n') == pair_b and right or pair_b
     feed_keys(keys)
 end
 
--- Complete 'quote':
---   | -> feed " -> "|"
--- Next character is 'quote':
---   |" -> feed " -> "|
--- After the escape character("\"), a 'quote' character or a NAC character:
---   \| -> feed " -> \"|
---   "| -> feed " -> ""|
---   a| -> feed " -> a"|
--- Before a NAC character:
---   |a -> feed " -> "|a
--- @param string quote Left part of a pair of 'quote'.
--- @return nil
+--- Complete *quote*:
+---   | -> feed " -> "|"
+--- Next character is *quote*:
+---   |" -> feed " -> "|
+--- After the escape character("\"), a *quote* character or a NAC character:
+---   \| -> feed " -> \"|
+---   "| -> feed " -> ""|
+---   a| -> feed " -> a"|
+--- Before a NAC character:
+---   |a -> feed " -> "|a
+--- @param quote string Left part of a pair of *quote*.
 function M.lp_quote(quote)
-    local last_char = get_ctxt('p')
+    local prev_char = get_ctxt('p')
     local next_char = get_ctxt('n')
     local keys
     if next_char == quote then
         keys = right
-    elseif (last_char == quote or
-        is_NAC(last_char) or
+    elseif (prev_char == quote or
+        is_NAC(prev_char) or
         is_NAC(next_char) or
-        last_char:match(vim.b.lp_last_spec) or
+        prev_char:match(vim.b.lp_prev_spec) or
         next_char:match(vim.b.lp_next_spec) or
         get_ctxt('b'):match(vim.b.lp_back_spec)) then
         keys = quote
@@ -315,8 +282,7 @@ function M.lp_quote(quote)
     feed_keys(keys)
 end
 
--- Define variables and key maps in current buffer.
--- @return nil
+--- Define variables and key maps in current buffer.
 function M.def_all()
     if vim.b.lp_map_list then return end
 
@@ -356,14 +322,15 @@ function M.def_all()
     end
 end
 
--- Set up lua-pairs.
--- @param hashtable option User configuration
---   bool      ret      True to map <CR>
---   bool      bak      True to map <BS> and <M-BS>
---   bool      spc      True to map <SPACE>
---   hashtable extd     To extend the default pairs
---   hashtable extd_map To define key bindings of extend pairs
--- @return nil
+--- Set up **lua-pairs**.
+--- @param option table User configuration
+--- | type      | option   | comment                                |
+--- |-----------|----------|----------------------------------------|
+--- | boolean   | ret      | True to map <CR>                       |
+--- | boolean   | bak      | True to map <BS> and <M-BS>            |
+--- | boolean   | spc      | True to map <SPACE>                    |
+--- | hashtable | extd     | To extend the default pairs            |
+--- | hashtable | extd_map | To define key bindings of extend pairs |
 function M.setup(option)
     opt = option
     vim.cmd('augroup lp_buffer_update')
