@@ -19,8 +19,20 @@ local right = '<C-g>U<Right>'
 --- Extend table b to a.
 --- @param a table Table to be extended.
 --- @param b table Table to extend.
-local tab_extd = function(a, b)
+local tbl_extd = function(a, b)
     for key, val in pairs(b) do a[key] = val end
+end
+
+--- Remove first in table item by value.
+--- @param tbl table Table to operate.
+--- @param val any Item value to remove.
+local tbl_remove = function(tbl, val)
+    for i, v in ipairs(tbl) do
+        if v == val then
+            table.remove(tbl, i)
+            return
+        end
+    end
 end
 
 --- Convert string to terminal codes.
@@ -103,6 +115,7 @@ local function def_var()
         vim.b.lp_prev_spec = "[\"'\\&<]"
     elseif vim.bo.filetype == 'lisp' then
         lp_comm_copy["'"] = nil
+        tbl_remove(lp_map_list, "'")
     elseif vim.tbl_contains({ 'html', 'xml' }, vim.bo.filetype) then
         table.insert(lp_map_list, '<')
         table.insert(lp_map_list, '>')
@@ -290,7 +303,7 @@ function M.def_all()
     if vim.b.lp_map_list then return end
 
     if opt.extd then
-        tab_extd(lp_comm, opt.extd)
+        tbl_extd(lp_comm, opt.extd)
     end
 
     def_var()
