@@ -60,7 +60,7 @@ local get_ctxt_pat = {
 --- @return string context Characters around the cursor.
 local function get_ctxt(mode)
     local pat = get_ctxt_pat[mode]
-    local line = vim.api.nvim_get_current_line()
+    local line = api.nvim_get_current_line()
     local s, e = vim.regex(
     pat[1]..(api.nvim_win_get_cursor(0)[2] + 1)..pat[2]):match_str(line)
     if s then
@@ -102,10 +102,8 @@ local function def_var()
     elseif vim.bo.filetype == 'rust' then
         vim.b.lp_prev_spec = "[\"'\\&<]"
     elseif vim.bo.filetype == 'lisp' then
-        table.insert(lp_map_list, '`')
         lp_buf["'"] = nil
-        lp_buf['`'] = "'"
-    elseif vim.bo.filetype == 'html' then
+    elseif vim.tbl_contains({ 'html', 'xml' }, vim.bo.filetype) then
         table.insert(lp_map_list, '<')
         table.insert(lp_map_list, '>')
         lp_buf['<'] = '>'
