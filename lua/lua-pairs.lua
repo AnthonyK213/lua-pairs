@@ -88,7 +88,7 @@ local function def_var()
     vim.b.lp_prev_spec = "[\"'\\]"
     vim.b.lp_next_spec = "[\"']"
     vim.b.lp_back_spec = "[^%s%S]"
-    local lp_buf = vim.deepcopy(lp_comm)
+    local lp_comm_copy = vim.deepcopy(lp_comm)
     local lp_buf_map = {
         ["<CR>"]    = "enter",
         ["<BS>"]    = "backs",
@@ -102,23 +102,28 @@ local function def_var()
     elseif vim.bo.filetype == 'rust' then
         vim.b.lp_prev_spec = "[\"'\\&<]"
     elseif vim.bo.filetype == 'lisp' then
-        lp_buf["'"] = nil
+        lp_comm_copy["'"] = nil
     elseif vim.tbl_contains({ 'html', 'xml' }, vim.bo.filetype) then
         table.insert(lp_map_list, '<')
         table.insert(lp_map_list, '>')
-        lp_buf['<'] = '>'
+        lp_comm_copy['<'] = '>'
     end
 
-    for key, val in pairs(lp_buf) do
-        if key == val then
-            if #val == 1 then
-                lp_buf_map[key] = 'quote'
+    local lp_buf = {}
+
+    for key, val in pairs(lp_comm_copy) do
+        if val then
+            lp_buf[key] = val
+            if key == val then
+                if #val == 1 then
+                    lp_buf_map[key] = 'quote'
+                else
+                    lp_buf_map[key] = 'mates'
+                end
             else
                 lp_buf_map[key] = 'mates'
+                lp_buf_map[val] = 'close'
             end
-        else
-            lp_buf_map[key] = 'mates'
-            lp_buf_map[val] = 'close'
         end
     end
 
