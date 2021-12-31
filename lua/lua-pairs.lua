@@ -14,8 +14,6 @@ local left  = '<C-g>U<Left>'
 local right = '<C-g>U<Right>'
 
 
----------- Local functions ---------
-
 --- Extend table b to a.
 --- @param a table Table to be extended.
 --- @param b table Table to extend.
@@ -23,7 +21,7 @@ local tbl_extd = function(a, b)
     for key, val in pairs(b) do a[key] = val end
 end
 
---- Remove first in table item by value.
+--- Remove first item with value `val` in table.
 --- @param tbl table Table to operate.
 --- @param val any Item value to remove.
 local tbl_remove = function(tbl, val)
@@ -165,7 +163,6 @@ local function def_map(kbd, key)
 end
 
 
----------- Module functions ---------
 
 --- Clear key maps of current buffer according to `b:lp_map_list`.
 function M.clr_map()
@@ -248,7 +245,7 @@ end
 ---   | -> feed defined_kbd -> pair_a|pair_b
 --- Before a NAC character:
 ---   |a -> feed ( -> (|a
---- @param pair_a string Left part of a pair of *mates*
+--- @param pair_a string Left part of a pair of *mates*.
 function M.lp_mates(pair_a)
     local keys
     if is_NAC(get_ctxt('n')) then
@@ -262,7 +259,7 @@ end
 
 --- Inside a defined pair:
 ---   (|) -> feed ) -> ()|
---- @param pair_b string Right part of a pair of *mates*
+--- @param pair_b string Right part of a pair of *mates*.
 function M.lp_close(pair_b)
     local keys = get_ctxt('n') == pair_b and right or pair_b
     feed_keys(keys)
@@ -339,7 +336,7 @@ function M.def_all()
 end
 
 --- Set up **lua-pairs**.
---- @param option table User configuration
+--- @param option table User configuration.
 --- | type      | option   | comment                                |
 --- |-----------|----------|----------------------------------------|
 --- | boolean   | ret      | True to map <CR>                       |
