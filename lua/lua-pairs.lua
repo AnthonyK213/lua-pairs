@@ -299,7 +299,7 @@ end
 function M.def_all()
     local buftype_exclude = opt.buftype_exclude or {}
     if vim.b.lp_map_list
-        or vim.tbl_contains(vim.bo.bt, buftype_exclude) then
+        or vim.tbl_contains(buftype_exclude, vim.bo.bt) then
         return
     end
 
