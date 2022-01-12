@@ -312,7 +312,11 @@ function M.def_all()
 
     def_var()
 
-    if opt.ret then
+    local ret = opt.ret == nil and true or opt.ret
+    local bak = opt.bak == nil and true or opt.bak
+    local spc = opt.spc == nil and true or opt.spc
+
+    if ret then
         def_map('<CR>', '<CR>')
     else
         api.nvim_set_keymap(
@@ -322,12 +326,12 @@ function M.def_all()
         { silent=true, expr=false, noremap=true })
     end
 
-    if opt.bak then
+    if bak then
         def_map("<BS>", "<BS>")
         def_map("<M-BS>", "<M-BS>")
     end
 
-    if opt.spc then
+    if spc then
         def_map("<SPACE>", "<SPACE>")
     end
 
