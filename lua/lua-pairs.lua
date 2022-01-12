@@ -10,10 +10,6 @@ local api = vim.api
 local opt = {}
 local lp_comm={ ["("]=")", ["["]=']', ["{"]="}", ["'"]="'", ['"']='"' }
 
-local exclude = opt.exclude or {}
-local buftype = exclude.buftype or {}
-local filetype = exclude.filetype or {}
-
 local left  = '<C-g>U<Left>'
 local right = '<C-g>U<Right>'
 
@@ -301,6 +297,9 @@ end
 
 --- Define variables and key maps in current buffer.
 function M.def_all()
+    local exclude = opt.exclude or {}
+    local buftype = exclude.buftype or {}
+    local filetype = exclude.filetype or {}
     if vim.b.lp_map_list
         or vim.tbl_contains(buftype, vim.bo.bt)
         or vim.tbl_contains(filetype, vim.bo.ft) then
