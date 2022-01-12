@@ -353,7 +353,7 @@ end
 --- | hashtable | extd_map | To define key bindings of extend pairs |
 --- | table     | exclude  | Excluded buffer types and file types   |
 function M.setup(option)
-    opt = option
+    opt = option or {}
     vim.cmd('augroup lp_buffer_update')
     vim.cmd('autocmd!')
     vim.cmd('au BufEnter * lua require("lua-pairs").def_all()')
