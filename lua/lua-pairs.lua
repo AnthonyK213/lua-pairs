@@ -297,7 +297,11 @@ end
 
 --- Define variables and key maps in current buffer.
 function M.def_all()
-    if vim.b.lp_map_list then return end
+    local buftype_exclude = opt.buftype_exclude or {}
+    if vim.b.lp_map_list
+        or vim.tbl_contains(vim.bo.bt, buftype_exclude) then
+        return
+    end
 
     if opt.extd then
         tbl_extd(lp_comm, opt.extd)
@@ -337,13 +341,14 @@ end
 
 --- Set up **lua-pairs**.
 --- @param option table User configuration.
---- | type      | option   | comment                                |
---- |-----------|----------|----------------------------------------|
---- | boolean   | ret      | True to map <CR>                       |
---- | boolean   | bak      | True to map <BS> and <M-BS>            |
---- | boolean   | spc      | True to map <SPACE>                    |
---- | hashtable | extd     | To extend the default pairs            |
---- | hashtable | extd_map | To define key bindings of extend pairs |
+--- | type      | option          | comment                                |
+--- |-----------|-----------------|----------------------------------------|
+--- | boolean   | ret             | True to map <CR>                       |
+--- | boolean   | bak             | True to map <BS> and <M-BS>            |
+--- | boolean   | spc             | True to map <SPACE>                    |
+--- | hashtable | extd            | To extend the default pairs            |
+--- | hashtable | extd_map        | To define key bindings of extend pairs |
+--- | table     | buftype_exclude | Excluded buffer types                  |
 function M.setup(option)
     opt = option
     vim.cmd('augroup lp_buffer_update')
