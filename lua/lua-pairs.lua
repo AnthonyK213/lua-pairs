@@ -348,14 +348,14 @@ end
 
 ---Set up **lua-pairs**.
 ---@param option table User configuration.
----  | type      | option   | comment                                |
----  |-----------|----------|----------------------------------------|
----  | boolean   | ret      | True to map <CR>                       |
----  | boolean   | bak      | True to map <BS> and <M-BS>            |
----  | boolean   | spc      | True to map <SPACE>                    |
----  | hashtable | extd     | To extend the default pairs            |
----  | hashtable | extd_map | To define key bindings of extend pairs |
----  | table     | exclude  | Excluded buffer types and file types   |
+-- | Option   | Type      | Description                            |
+-- |----------|-----------|----------------------------------------|
+-- | ret      | boolean   | True to map <CR>                       |
+-- | bak      | boolean   | True to map <BS> and <M-BS>            |
+-- | spc      | boolean   | True to map <SPACE>                    |
+-- | extd     | hashtable | To extend the default pairs            |
+-- | extd_map | hashtable | To define key bindings of extend pairs |
+-- | exclude  | table     | Excluded buffer types and file types   |
 function M.setup(option)
     opt = option or {}
     vim.cmd('augroup lp_buffer_update')
