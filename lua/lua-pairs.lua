@@ -8,10 +8,15 @@ local vim = vim
 local api = vim.api
 
 local opt = {}
-local lp_comm={ ["("]=")", ["["]=']', ["{"]="}", ["'"]="'", ['"']='"' }
-
-local left  = '<C-g>U<Left>'
-local right = '<C-g>U<Right>'
+local lp_comm = {
+    ["("] = ")",
+    ["["] = ']',
+    ["{"] = "}",
+    ["'"] = "'",
+    ['"'] = '"'
+}
+local left  = '<C-G>U<Left>'
+local right = '<C-G>U<Right>'
 
 
 ---Extend table b to a.
