@@ -381,7 +381,7 @@ function M.setup(option)
     api.nvim_create_autocmd("BufEnter", {
         group = id,
         pattern = "*",
-        callback = M.def_all()
+        callback = M.def_all
     })
 
     api.nvim_create_autocmd("FileType", {
