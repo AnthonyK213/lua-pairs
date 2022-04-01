@@ -155,12 +155,6 @@ end
 ---@param kbd string Key binding.
 ---@param key string Key to feed to the buffer.
 local function def_map(kbd, key)
-    --local k = key:match('<%u.*>') and '' or '"'..vim.fn.escape(key, '"')..'"'
-    --api.nvim_buf_set_keymap(
-    --0, 'i', kbd,
-    --'<CMD>lua require("lua-pairs").lp_'..vim.b.lp_buf_map[key]..'('..k..')<CR>',
-    --{ noremap = true, expr = false, silent = true })
-
     vim.keymap.set('i', kbd, function ()
         require("lua-pairs")["lp_"..vim.b.lp_buf_map[key]](key)
     end, { noremap = true, expr = false, silent = true, buffer = true })
@@ -364,15 +358,6 @@ end
 -- | exclude  | table     | Excluded buffer types and file types   |
 function M.setup(option)
     opt = option or {}
-    --[=[
-    vim.cmd('augroup lp_buffer_update')
-    vim.cmd('autocmd!')
-    vim.cmd('au BufEnter * lua require("lua-pairs").def_all()')
-    vim.cmd([[au FileType * lua ]]..
-    [[require("lua-pairs").clr_map() ]]..
-    [[require("lua-pairs").def_all()]])
-    vim.cmd('augroup end')
-    --]=]
 
     local id = api.nvim_create_augroup("lp_buffer_update", {
         clear = true
