@@ -374,7 +374,9 @@ function M.setup(option)
     vim.cmd('augroup end')
     --]=]
 
-    local id = api.nvim_create_augroup("lp_buffer_update")
+    local id = api.nvim_create_augroup("lp_buffer_update", {
+        clear = true
+    })
 
     api.nvim_create_autocmd("BufEnter", {
         group = id,
