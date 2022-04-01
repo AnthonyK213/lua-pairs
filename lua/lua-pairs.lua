@@ -163,7 +163,7 @@ local function def_map(kbd, key)
 
     vim.keymap.set('i', kbd, function ()
         require("lua-pairs")["lp_"..vim.b.lp_buf_map[key]](key)
-    end, { noremap = true, expr = false, silent = true })
+    end, { noremap = true, expr = false, silent = true, buffer = true })
 end
 
 
@@ -172,8 +172,10 @@ end
 function M.clr_map()
     if vim.b.lp_map_list then
         for _, key in ipairs(vim.b.lp_map_list) do
-            api.nvim_buf_set_keymap(0, 'i', key, key,
-            { noremap = true, expr = false, silent = true })
+            --api.nvim_buf_set_keymap(0, 'i', key, key,
+            --{ noremap = true, expr = false, silent = true })
+
+            vim.keymap.del('i', key, { buffer = true })
         end
         vim.b.lp_map_list = nil
     end
