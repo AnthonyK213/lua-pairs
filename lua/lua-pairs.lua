@@ -155,11 +155,15 @@ end
 ---@param kbd string Key binding.
 ---@param key string Key to feed to the buffer.
 local function def_map(kbd, key)
-    local k = key:match('<%u.*>') and '' or '"'..vim.fn.escape(key, '"')..'"'
-    api.nvim_buf_set_keymap(
-    0, 'i', kbd,
-    '<CMD>lua require("lua-pairs").lp_'..vim.b.lp_buf_map[key]..'('..k..')<CR>',
-    { noremap = true, expr = false, silent = true })
+    --local k = key:match('<%u.*>') and '' or '"'..vim.fn.escape(key, '"')..'"'
+    --api.nvim_buf_set_keymap(
+    --0, 'i', kbd,
+    --'<CMD>lua require("lua-pairs").lp_'..vim.b.lp_buf_map[key]..'('..k..')<CR>',
+    --{ noremap = true, expr = false, silent = true })
+
+    vim.keymap.set('i', kbd, function ()
+        require("lua-pairs")["lp_"..vim.b.lp_buf_map[key]](key)
+    end, { noremap = true, expr = false, silent = true })
 end
 
 
@@ -178,7 +182,7 @@ end
 ---Actions on <CR>.
 ---Inside a pair of brackets:
 ---  {|} -> feed <CR> -> {<br>|<br>}
-function M.lp_enter()
+function M.lp_enter(_)
     if is_sur(vim.b.lp_buf) then
         feed_keys('<CR><C-\\><C-O>O')
     elseif get_ctxt('b'):match('{%s*$') and
@@ -194,7 +198,7 @@ end
 ---  (|) -> feed <BS> -> |
 ---Inside a pair of barces with one space:
 ---  { | } -> feed <BS> -> {|}
-function M.lp_backs()
+function M.lp_backs(_)
     if is_sur(vim.b.lp_buf) then
         feed_keys(right..'<BS><BS>')
     elseif get_ctxt('b'):match('{%s$') and
@@ -210,7 +214,7 @@ end
 ---  <u>|</u> -> feed <M-BS> -> |
 ---Kill a word:
 ---  Kill a word| -> feed <M-BS> -> Kill a |
-function M.lp_supbs()
+function M.lp_supbs(_)
     local back = get_ctxt('b')
     local fore = get_ctxt('f')
     local res = { false, 0, 0 }
@@ -234,7 +238,7 @@ end
 ---Actions on <SPACE>.
 ---Inside a pair of braces:
 ---  {|} -> feed <SPACE> -> { | }
-function M.lp_space()
+function M.lp_space(_)
     local keys = is_sur({ ['{']='}' }) and
     '<SPACE><SPACE>'..left or '<SPACE>'
     feed_keys(keys)
