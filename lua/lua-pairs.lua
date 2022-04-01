@@ -329,7 +329,7 @@ function M.def_all()
         'i',
         '<Plug>(lua_pairs_enter)',
         '<CMD>lua require("lua-pairs").lp_enter()<CR>',
-        { silent=true, expr=false, noremap=true })
+        { silent = true, expr = false, noremap = true })
     end
 
     if bak then
@@ -364,6 +364,7 @@ end
 -- | exclude  | table     | Excluded buffer types and file types   |
 function M.setup(option)
     opt = option or {}
+    --[=[
     vim.cmd('augroup lp_buffer_update')
     vim.cmd('autocmd!')
     vim.cmd('au BufEnter * lua require("lua-pairs").def_all()')
@@ -371,6 +372,24 @@ function M.setup(option)
     [[require("lua-pairs").clr_map() ]]..
     [[require("lua-pairs").def_all()]])
     vim.cmd('augroup end')
+    --]=]
+
+    local id = api.nvim_create_augroup("lp_buffer_update")
+
+    api.nvim_create_autocmd("BufEnter", {
+        group = id,
+        pattern = "*",
+        callback = M.def_all()
+    })
+
+    api.nvim_create_autocmd("FileType", {
+        group = id,
+        pattern = "*",
+        callback = function ()
+            M.clr_map()
+            M.def_all()
+        end
+    })
 end
 
 
