@@ -59,30 +59,34 @@ local function is_NAC(char)
     return char:match('[%w_]') or (nr >= 0x4E00 and nr <= 0x9FFF)
 end
 
-local get_ctxt_pat = {
-    p = { [[.\%]], [[c]] },
-    n = { [[\%]], [[c.]] },
-    b = { [[^.*\%]], 'c' },
-    f = { [[\%]], 'c.*$' }
-}
-
----Get characters around the cursor by `mode`.
----@param mode string Four modes to get the context.
+---Get characters around the cursor.
+---@return table<string, string> context Context table with keys below:
 ---  - *p* -> Return the character before cursor (previous);
 ---  - *n* -> Return the character after cursor  (next);
 ---  - *b* -> Return the half line before cursor (backward);
 ---  - *f* -> Return the half line after cursor  (forward).
----@return string context Characters around the cursor.
-local function get_ctxt(mode)
-    local pat = get_ctxt_pat[mode]
-    local line = api.nvim_get_current_line()
-    local s, e = vim.regex(
-    pat[1]..(api.nvim_win_get_cursor(0)[2] + 1)..pat[2]):match_str(line)
-    if s then
-        return line:sub(s + 1, e)
+local function get_ctxt()
+    local context = {}
+    local col = vim.api.nvim_win_get_cursor(0)[2]
+    local line = vim.api.nvim_get_current_line()
+    local back = line:sub(1, col)
+    local fore = line:sub(col + 1, #line)
+    context.b = back
+    context.f = fore
+    if #back > 0 then
+        local utfindex = vim.str_utfindex(back)
+        local s = vim.str_byteindex(back, utfindex - 1)
+        context.p = back:sub(s + 1, #back)
     else
-        return ""
+        context.p = ""
     end
+    if #fore > 0 then
+        local e = vim.str_byteindex(fore, 1)
+        context.n = fore:sub(1, e)
+    else
+        context.n = ""
+    end
+    return context
 end
 
 ---Define the buffer variables.
@@ -152,8 +156,8 @@ end
 ---@param pair_table table Defined pairs to index.
 ---@return boolean result True if the cursor is surrounded by `pair_table`.
 local function is_sur(pair_table)
-    local prev_char = get_ctxt('p')
-    return pair_table[prev_char] and vim.b.lp_buf[prev_char] == get_ctxt('n')
+    local context = get_ctxt()
+    return pair_table[context.p] and vim.b.lp_buf[context.p] == context.n
 end
 
 ---Difine buffer key maps.
@@ -181,10 +185,10 @@ end
 ---Inside a pair of brackets:
 ---  {|} -> feed <CR> -> {<br>|<br>}
 function M.lp_enter(_)
+    local context = get_ctxt()
     if is_sur(vim.b.lp_buf) then
         feed_keys('<CR><C-\\><C-O>O')
-    elseif get_ctxt('b'):match('{%s*$') and
-        get_ctxt('f'):match('^%s*}') then
+    elseif context.b:match('{%s*$') and context.f:match('^%s*}') then
         feed_keys('<C-\\><C-O>"_diB<CR><C-\\><C-O>O')
     else
         feed_keys('<CR>')
@@ -197,10 +201,10 @@ end
 ---Inside a pair of barces with one space:
 ---  { | } -> feed <BS> -> {|}
 function M.lp_backs(_)
+    local context = get_ctxt()
     if is_sur(vim.b.lp_buf) then
         feed_keys(right..'<BS><BS>')
-    elseif get_ctxt('b'):match('{%s$') and
-        get_ctxt('f'):match('^%s}') then
+    elseif context.b:match('{%s$') and context.f:match('^%s}') then
         feed_keys('<C-\\><C-O>"_diB')
     else
         feed_keys('<BS>')
@@ -213,8 +217,9 @@ end
 ---Kill a word:
 ---  Kill a word| -> feed <M-BS> -> Kill a |
 function M.lp_supbs(_)
-    local back = get_ctxt('b')
-    local fore = get_ctxt('f')
+    local context = get_ctxt()
+    local back = context.b
+    local fore = context.f
     local res = { false, 0, 0 }
     for key, val in pairs(vim.b.lp_buf) do
         if (back:match(vim.pesc(key)..'$') and
@@ -250,7 +255,7 @@ end
 ---@param pair_a string Left part of a pair of *mates*.
 function M.lp_mates(pair_a)
     local keys
-    if is_NAC(get_ctxt('n')) then
+    if is_NAC(get_ctxt().n) then
         keys = pair_a
     else
         local pair_b = vim.b.lp_buf[pair_a]
@@ -263,7 +268,7 @@ end
 ---  (|) -> feed ) -> ()|
 ---@param pair_b string Right part of a pair of *mates*.
 function M.lp_close(pair_b)
-    local keys = get_ctxt('n') == pair_b and right or pair_b
+    local keys = get_ctxt().n == pair_b and right or pair_b
     feed_keys(keys)
 end
 
@@ -279,8 +284,9 @@ end
 ---  |a -> feed " -> "|a
 ---@param quote string Left part of a pair of *quote*.
 function M.lp_quote(quote)
-    local prev_char = get_ctxt('p')
-    local next_char = get_ctxt('n')
+    local context = get_ctxt()
+    local prev_char = context.p
+    local next_char = context.n
     local keys
     if next_char == quote then
         keys = right
@@ -289,7 +295,7 @@ function M.lp_quote(quote)
         is_NAC(next_char) or
         prev_char:match(vim.b.lp_prev_spec) or
         next_char:match(vim.b.lp_next_spec) or
-        get_ctxt('b'):match(vim.b.lp_back_spec)) then
+        context.b:match(vim.b.lp_back_spec)) then
         keys = quote
     else
         keys = quote..quote..left
