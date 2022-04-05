@@ -61,10 +61,10 @@ end
 
 ---Get characters around the cursor.
 ---@return table<string, string> context Context table with keys below:
----  - *p* -> Return the character before cursor (previous);
----  - *n* -> Return the character after cursor  (next);
----  - *b* -> Return the half line before cursor (backward);
----  - *f* -> Return the half line after cursor  (forward).
+---  - *p* -> The character before cursor (previous);
+---  - *n* -> The character after cursor  (next);
+---  - *b* -> The half line before cursor (backward);
+---  - *f* -> The half line after cursor  (forward).
 local function get_ctxt()
     local context = {}
     local col = vim.api.nvim_win_get_cursor(0)[2]
