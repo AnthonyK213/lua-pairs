@@ -1,4 +1,4 @@
--- File:       lua-pairs.lua
+-- File:       lua_pairs.lua
 -- Repository: https://github.com/AnthonyK213/nvim
 -- License:    The MIT License (MIT)
 
@@ -165,7 +165,7 @@ end
 ---@param key string Key to feed to the buffer.
 local function def_map(kbd, key)
     vim.keymap.set('i', kbd, function ()
-        require("lua-pairs")["lp_"..vim.b.lp_buf_map[key]](key)
+        require("lua_pairs")["lp_"..vim.b.lp_buf_map[key]](key)
     end, { noremap = true, expr = false, silent = true, buffer = true })
 end
 
@@ -330,7 +330,7 @@ function M.def_all()
         api.nvim_set_keymap(
         'i',
         '<Plug>(lua_pairs_enter)',
-        '<CMD>lua require("lua-pairs").lp_enter()<CR>',
+        '<CMD>lua require("lua_pairs").lp_enter()<CR>',
         { silent = true, expr = false, noremap = true })
     end
 
