@@ -19,6 +19,13 @@ local left  = '<C-G>U<Left>'
 local right = '<C-G>U<Right>'
 
 
+---Check if current **filetype** has `filetype`.
+---@param filetype string File type to be checked.
+---@return boolean result True if current **filetype** has `filetype`.
+local has_filetype = function(filetype)
+    return vim.tbl_contains(vim.split(vim.bo.ft, "%."), filetype)
+end
+
 ---Extend table b to a.
 ---@param a table Table to be extended.
 ---@param b table Table to extend.
@@ -308,6 +315,7 @@ function M.def_all()
     local exclude = opt.exclude or {}
     local buftype = exclude.buftype or {}
     local filetype = exclude.filetype or {}
+
     if vim.b.lp_map_list
         or vim.tbl_contains(buftype, vim.bo.bt)
         or vim.tbl_contains(filetype, vim.bo.ft) then
@@ -315,7 +323,15 @@ function M.def_all()
     end
 
     if opt.extd then
-        tbl_extd(lp_comm, opt.extd)
+        if opt.extd["_"] then
+            tbl_extd(lp_comm, opt.extd["_"])
+        end
+        for ft, pr in pairs(opt.extd) do
+            if has_filetype(ft) then
+                tbl_extd(lp_comm, pr)
+                break
+            end
+        end
     end
 
     def_var()
@@ -348,8 +364,17 @@ function M.def_all()
     end
 
     if opt.extd_map then
-        for key, val in pairs(opt.extd_map) do
-            def_map(key, val)
+        if opt.extd_map["_"] then
+            for key, val in pairs(opt.extd_map["_"]) do
+                def_map(key, val)
+            end
+        end
+        for ft, mp in pairs(opt.extd_map) do
+            if has_filetype(ft) then
+                for key, val in pairs(mp) do
+                    def_map(key, val)
+                end
+            end
         end
     end
 end
