@@ -1,23 +1,37 @@
--- File:       lua_pairs.lua
--- Repository: https://github.com/AnthonyK213/nvim
--- License:    The MIT License (MIT)
-
-
 local M = {}
-local vim = vim
-local api = vim.api
 
-local opt = {}
-local lp_comm = {
-    ["("] = ")",
-    ["["] = ']',
-    ["{"] = "}",
-    ["'"] = "'",
-    ['"'] = '"'
+
+local O = {}
+local L = "<C-G>U<Left>"
+local R = "<C-G>U<Right>"
+local C = {
+    { l = "(", r = ")" },
+    { l = "[", r = "]" },
+    { l = "{", r = "}" },
+    { l = '"', r = '"', d = function(context)
+        return context.p == "\\"
+            or (vim.bo.ft == "vim"
+                and context.b:match("^%s*$"))
+    end },
+    { l = "'", r = "'", e = function()
+        return vim.bo.ft ~= "lisp"
+    end, d = function(context)
+        return context.p == "\\"
+            or (vim.bo.ft == "rust"
+                and vim.tbl_contains({ "<", "&" }, context.p))
+    end },
+    { l = "<", r = ">", e = function()
+        return vim.tbl_contains({ "html", "xml" }, vim.bo.ft)
+    end },
+    { k = "<CR>" },
+    { k = "<BS>" },
+    { k = "<M-BS>" },
+    { k = "<SPACE>" },
 }
-local left  = '<C-G>U<Left>'
-local right = '<C-G>U<Right>'
 
+
+local __e = function() return true end
+local __d = function(_) return false end
 
 ---Check if current **filetype** has `filetype`.
 ---@param filetype string File type to be checked.
@@ -26,44 +40,25 @@ local has_filetype = function(filetype)
     return vim.tbl_contains(vim.split(vim.bo.ft, "%."), filetype)
 end
 
----Extend table b to a.
----@param a table Table to be extended.
----@param b table Table to extend.
-local tbl_extd = function(a, b)
-    for key, val in pairs(b) do a[key] = val end
-end
-
----Remove first item with value `val` in table.
----@param tbl table Table to operate.
----@param val any Item value to remove.
-local tbl_remove = function(tbl, val)
-    for i, v in ipairs(tbl) do
-        if v == val then
-            table.remove(tbl, i)
-            return
-        end
-    end
-end
-
 ---Convert string to terminal codes.
 ---@param str string String to be converted.
 ---@return string terminal_code Termianl code.
 local rep_term = function(str)
-    return api.nvim_replace_termcodes(str, true, false, true)
+    return vim.api.nvim_replace_termcodes(str, true, false, true)
 end
 
 ---Feed keys to current buffer.
 ---@param str string Operation as string to feed to buffer.
 local feed_keys = function(str)
-    api.nvim_feedkeys(rep_term(str), 'n', true)
+    vim.api.nvim_feedkeys(rep_term(str), "n", true)
 end
 
 ---Determine if a character is a numeric/alphabetic/CJK(NAC) character.
 ---@param char string A character to be tested.
 ---@return boolean result True if the character is a NAC.
-local function is_NAC(char)
+local is_nac = function(char)
     local nr = vim.fn.char2nr(char)
-    return char:match('[%w_]') or (nr >= 0x4E00 and nr <= 0x9FFF)
+    return char:match("[%w_]") or (nr >= 0x4E00 and nr <= 0x9FFF)
 end
 
 ---Get characters around the cursor.
@@ -96,67 +91,113 @@ local function get_ctxt()
     return context
 end
 
----Define the buffer variables.
----@bufvar lp_prev_spec string    No paifing if the previous character matches.
----@bufvar lp_next_spec string    No pairing if the next character matches.
----@bufvar lp_back_spec string    No pairing if the left half line matches.
----@bufvar lp_buf       hashtable { (string)pair_left = (string)pair_right }
----@bufvar lp_buf_map   hashtable { (string)key = (string)pair_type }
----  - *enter* -> Enter/Return;
----  - *backs* -> Backspace;
----  - *supbs* -> Super backspace;
----  - *space* -> Space;
----  - *mates* -> A pair of characters consisting of different characters;
----  - *quote* -> A pair of characters consisting of identical characters;
----  - *close* -> Character to close a pair (right part of a pair).
----@bufvar lp_map_list  arraytable { (string)keys_to_map }
-local function def_var()
-    vim.b.lp_prev_spec = "[\"'\\]"
-    vim.b.lp_next_spec = "[\"']"
-    vim.b.lp_back_spec = "[^%s%S]"
-    local lp_comm_copy = vim.deepcopy(lp_comm)
-    local lp_buf_map = {
-        ["<CR>"]    = "enter",
-        ["<BS>"]    = "backs",
-        ["<M-BS>"]  = "supbs",
-        ["<SPACE>"] = "space"
-    }
-    local lp_map_list = { "(", "[", "{", ")", "]", "}", "'", '"' }
+---@type table<integer, K[]>
+local B = {}
 
-    if vim.bo.filetype == 'vim' then
-        vim.b.lp_back_spec = '^%s*$'
-    elseif vim.bo.filetype == 'rust' then
-        vim.b.lp_prev_spec = "[\"'\\&<]"
-    elseif vim.bo.filetype == 'lisp' then
-        lp_comm_copy["'"] = nil
-        tbl_remove(lp_map_list, "'")
-    elseif vim.tbl_contains({ 'html', 'xml' }, vim.bo.filetype) then
-        table.insert(lp_map_list, '<')
-        table.insert(lp_map_list, '>')
-        lp_comm_copy['<'] = '>'
-    end
+function B:get()
+    return self[vim.api.nvim_get_current_buf()]
+end
 
-    local lp_buf = {}
+function B:set(ks)
+    self[vim.api.nvim_get_current_buf()] = ks
+end
 
-    for key, val in pairs(lp_comm_copy) do
-        if val then
-            lp_buf[key] = val
-            if key == val then
-                if #val == 1 then
-                    lp_buf_map[key] = 'quote'
-                else
-                    lp_buf_map[key] = 'mates'
-                end
-            else
-                lp_buf_map[key] = 'mates'
-                lp_buf_map[val] = 'close'
+function B:is_sur()
+    local ks = self:get()
+    if ks then
+        local context = get_ctxt()
+        for _, k in ipairs(ks) do
+            if k.l_side and k.r_side
+                and vim.endswith(context.b, k.l_side)
+                and vim.startswith(context.f, k.r_side) then
+                return true
             end
         end
     end
+    return false
+end
 
-    vim.b.lp_buf = lp_buf
-    vim.b.lp_buf_map = lp_buf_map
-    vim.b.lp_map_list = lp_map_list
+---@class K
+---@field key string?
+---@field l_side string
+---@field r_side string
+---@field mates boolean
+---@field quote boolean
+---@field close boolean
+---@field enable function
+---@field disable function
+---@field specs function[]
+local K = {}
+
+K.__index = K
+
+---Constructor.
+---@param args table<string, string>
+---@return K
+function K.new(args)
+    local specs = {}
+    local k = {
+        key = args.k,
+        l_side = args.l,
+        r_side = args.r,
+        mates = false,
+        quote = false,
+        close = false,
+        enable = args.e or __e,
+        disable = args.d or __d,
+    }
+    if k.key and M.T[k.key] then
+        table.insert(specs, M.T[k.key])
+    elseif k.l_side and k.r_side then
+        if k.l_side == k.r_side and #(k.l_side) == 1 then
+            k.quote = true
+        else
+            k.mates = true
+            if k.r_side and #k.r_side == 1 then
+                k.close = true
+            end
+        end
+    end
+    k.specs = specs
+    setmetatable(k, K)
+    return k
+end
+
+function K:set_map()
+    if not self.enable() then return end
+    local _opt = { noremap = true, expr = false, silent = true, buffer = true }
+    for _, f in ipairs(self.specs) do
+        vim.keymap.set("i", self.key, function()
+            f(self.l_side, self.r_side, self.disable)
+        end, _opt)
+    end
+    if self.close then
+        vim.keymap.set("i", self.r_side, function()
+            M.T.Close(self.l_side, self.r_side, self.disable)
+        end, _opt)
+    end
+    if self.mates then
+        vim.keymap.set("i", self.key or self.l_side, function()
+            M.T.Mates(self.l_side, self.r_side, self.disable)
+        end, _opt)
+    end
+    if self.quote then
+        vim.keymap.set("i", self.key or self.l_side, function()
+            M.T.Quote(self.l_side, self.r_side, self.disable)
+        end, _opt)
+    end
+end
+
+function K:clr_map()
+    if self.key then
+        vim.keymap.del("i", self.key, { buffer = true })
+    end
+    if self.l_side then
+        vim.keymap.del("i", self.l_side, { buffer = true })
+    end
+    if self.r_side then
+        vim.keymap.del("i", self.r_side, { buffer = true })
+    end
 end
 
 ---Check the surrounding characters of the cursor.
@@ -164,41 +205,20 @@ end
 ---@return boolean result True if the cursor is surrounded by `pair_table`.
 local function is_sur(pair_table)
     local context = get_ctxt()
-    return pair_table[context.p] and vim.b.lp_buf[context.p] == context.n
-end
-
----Difine buffer key maps.
----@param kbd string Key binding.
----@param key string Key to feed to the buffer.
-local function def_map(kbd, key)
-    vim.keymap.set('i', kbd, function ()
-        require("lua_pairs")["lp_"..vim.b.lp_buf_map[key]](key)
-    end, { noremap = true, expr = false, silent = true, buffer = true })
-end
-
-
-
----Clear key maps of current buffer according to `b:lp_map_list`.
-function M.clr_map()
-    if vim.b.lp_map_list then
-        for _, key in ipairs(vim.b.lp_map_list) do
-            vim.keymap.del('i', key, { buffer = true })
-        end
-        vim.b.lp_map_list = nil
-    end
+    return pair_table[context.p] == context.n
 end
 
 ---Actions on <CR>.
 ---Inside a pair of brackets:
 ---  {|} -> feed <CR> -> {<br>|<br>}
-function M.lp_enter(_)
+local function lp_enter(_, _, _)
     local context = get_ctxt()
-    if is_sur(vim.b.lp_buf) then
-        feed_keys('<CR><C-\\><C-O>O')
-    elseif context.b:match('{%s*$') and context.f:match('^%s*}') then
-        feed_keys('<C-\\><C-O>"_diB<CR><C-\\><C-O>O')
+    if B:is_sur() then
+        feed_keys [[<CR><C-\><C-O>O]]
+    elseif context.b:match("{%s*$") and context.f:match("^%s*}") then
+        feed_keys [[<C-\><C-O>"_diB<CR><C-\><C-O>O]]
     else
-        feed_keys('<CR>')
+        feed_keys [[<CR>]]
     end
 end
 
@@ -207,14 +227,14 @@ end
 ---  (|) -> feed <BS> -> |
 ---Inside a pair of barces with one space:
 ---  { | } -> feed <BS> -> {|}
-function M.lp_backs(_)
+local function lp_backs(_, _, _)
     local context = get_ctxt()
-    if is_sur(vim.b.lp_buf) then
-        feed_keys(right..'<BS><BS>')
-    elseif context.b:match('{%s$') and context.f:match('^%s}') then
-        feed_keys('<C-\\><C-O>"_diB')
+    if B:is_sur() then
+        feed_keys(R .. "<BS><BS>")
+    elseif context.b:match("{%s$") and context.f:match("^%s}") then
+        feed_keys [[<C-\><C-O>"_diB]]
     else
-        feed_keys('<BS>')
+        feed_keys("<BS>")
     end
 end
 
@@ -223,34 +243,34 @@ end
 ---  <u>|</u> -> feed <M-BS> -> |
 ---Kill a word:
 ---  Kill a word| -> feed <M-BS> -> Kill a |
-function M.lp_supbs(_)
+local function lp_supbs(_, _, _)
     local context = get_ctxt()
     local back = context.b
     local fore = context.f
     local res = { false, 0, 0 }
-    for key, val in pairs(vim.b.lp_buf) do
-        if (back:match(vim.pesc(key)..'$') and
-            fore:match('^'..vim.pesc(val)) and
-            #key + #val > res[2] + res[3]) then
-            res = { true, #key, #val }
+    for _, k in ipairs(B:get()) do
+        if k.l_side and k.r_side
+            and vim.endswith(back, k.l_side)
+            and vim.startswith(fore, k.r_side)
+            and #k.l_side + #k.r_side > res[2] + res[3] then
+            res = { true, #k.l_side, #k.r_side }
         end
     end
     if res[1] then
-        feed_keys(string.rep(left, res[2])..
-        string.rep('<Del>', res[2] + res[3]))
-    elseif back:match('{%s*$') and fore:match('^%s*}') then
-        feed_keys('<C-\\><C-O>"_diB')
+        feed_keys(string.rep(L, res[2]) ..
+            string.rep("<Del>", res[2] + res[3]))
+    elseif back:match("{%s*$") and fore:match("^%s*}") then
+        feed_keys [[<C-\><C-O>"_diB]]
     else
-        feed_keys('<C-\\><C-O>"_db')
+        feed_keys [[<C-\><C-O>"_db]]
     end
 end
 
 ---Actions on <SPACE>.
 ---Inside a pair of braces:
 ---  {|} -> feed <SPACE> -> { | }
-function M.lp_space(_)
-    local keys = is_sur({ ['{']='}' }) and
-    '<SPACE><SPACE>'..left or '<SPACE>'
+local function lp_space(_, _, _)
+    local keys = is_sur({ ["{"] = "}" }) and "<SPACE><SPACE>" .. L or "<SPACE>"
     feed_keys(keys)
 end
 
@@ -259,23 +279,20 @@ end
 ---  | -> feed defined_kbd -> pair_a|pair_b
 ---Before a NAC character:
 ---  |a -> feed ( -> (|a
----@param pair_a string Left part of a pair of *mates*.
-function M.lp_mates(pair_a)
-    local keys
-    if is_NAC(get_ctxt().n) then
-        keys = pair_a
+---@param l_side string Left part of a pair of *mates*.
+local function lp_mates(l_side, r_side, _)
+    if is_nac(get_ctxt().n) then
+        feed_keys(l_side)
     else
-        local pair_b = vim.b.lp_buf[pair_a]
-        keys = pair_a..pair_b..string.rep(left, #pair_b)
+        feed_keys(l_side .. r_side .. string.rep(L, #r_side))
     end
-    feed_keys(keys)
 end
 
 ---Inside a defined pair:
 ---  (|) -> feed ) -> ()|
----@param pair_b string Right part of a pair of *mates*.
-function M.lp_close(pair_b)
-    local keys = get_ctxt().n == pair_b and right or pair_b
+---@param r_side string Right part of a pair of *mates*.
+local function lp_close(_, r_side, _)
+    local keys = get_ctxt().n == r_side and R or r_side
     feed_keys(keys)
 end
 
@@ -289,128 +306,120 @@ end
 ---  a| -> feed " -> a"|
 ---Before a NAC character:
 ---  |a -> feed " -> "|a
----@param quote string Left part of a pair of *quote*.
-function M.lp_quote(quote)
+---@param l_side string Left part of a pair of *quote*.
+local function lp_quote(l_side, _, disable)
     local context = get_ctxt()
     local prev_char = context.p
     local next_char = context.n
-    local keys
-    if next_char == quote then
-        keys = right
-    elseif (prev_char == quote or
-        is_NAC(prev_char) or
-        is_NAC(next_char) or
-        prev_char:match(vim.b.lp_prev_spec) or
-        next_char:match(vim.b.lp_next_spec) or
-        context.b:match(vim.b.lp_back_spec)) then
-        keys = quote
+    if next_char == l_side then
+        feed_keys(R)
+    elseif (prev_char == l_side
+        or is_nac(prev_char)
+        or is_nac(next_char)
+        or disable(context)) then
+        feed_keys(l_side)
     else
-        keys = quote..quote..left
+        feed_keys(l_side .. l_side .. L)
     end
-    feed_keys(keys)
+end
+
+M.T = {
+    Mates = lp_mates,
+    Quote = lp_quote,
+    Close = lp_close,
+    ["<CR>"] = lp_enter,
+    ["<BS>"] = lp_backs,
+    ["<M-BS>"] = lp_supbs,
+    ["<SPACE>"] = lp_space,
+}
+
+---Clear key maps of current buffer.
+local function clr_all()
+    local ks = B:get()
+    if ks then
+        for _, k in ipairs(ks) do
+            k:clr_map()
+        end
+    end
+    B:set(nil)
 end
 
 ---Define variables and key maps in current buffer.
-function M.def_all()
-    local exclude = opt.exclude or {}
+local function set_all()
+    local exclude = O.exclude or {}
     local buftype = exclude.buftype or {}
     local filetype = exclude.filetype or {}
 
-    if vim.b.lp_map_list
+    if B:get()
         or vim.tbl_contains(buftype, vim.bo.bt)
         or vim.tbl_contains(filetype, vim.bo.ft) then
         return
     end
 
-    if opt.extd then
-        if opt.extd["_"] then
-            tbl_extd(lp_comm, opt.extd["_"])
+    ---@type K[]
+    local b = {}
+    for _, args in ipairs(C) do table.insert(b, K.new(args)) end
+
+    if O.extd then
+        if O.extd["_"] then
+            for _, args in ipairs(O.extd["_"]) do
+                table.insert(b, K.new(args))
+            end
         end
-        for ft, pr in pairs(opt.extd) do
+        for ft, pr in pairs(O.extd) do
             if has_filetype(ft) then
-                tbl_extd(lp_comm, pr)
+                for _, args in ipairs(pr) do
+                    local k_e = args.e
+                    if k_e then
+                        args.e = function()
+                            return k_e() and has_filetype(ft)
+                        end
+                    else
+                        args.e = function() return has_filetype(ft) end
+                    end
+                    table.insert(b, K.new(args))
+                end
                 break
             end
         end
     end
 
-    def_var()
+    B:set(b)
 
-    local ret = opt.ret == nil and true or opt.ret
-    local bak = opt.bak == nil and true or opt.bak
-    local spc = opt.spc == nil and true or opt.spc
-
-    if ret then
-        def_map('<CR>', '<CR>')
-    else
-        api.nvim_set_keymap(
-        'i',
-        '<Plug>(lua_pairs_enter)',
-        '<CMD>lua require("lua_pairs").lp_enter()<CR>',
-        { silent = true, expr = false, noremap = true })
-    end
-
-    if bak then
-        def_map("<BS>", "<BS>")
-        def_map("<M-BS>", "<M-BS>")
-    end
-
-    if spc then
-        def_map("<SPACE>", "<SPACE>")
-    end
-
-    for _, key in ipairs(vim.b.lp_map_list) do
-        def_map(key, key)
-    end
-
-    if opt.extd_map then
-        if opt.extd_map["_"] then
-            for key, val in pairs(opt.extd_map["_"]) do
-                def_map(key, val)
-            end
-        end
-        for ft, mp in pairs(opt.extd_map) do
-            if has_filetype(ft) then
-                for key, val in pairs(mp) do
-                    def_map(key, val)
-                end
-            end
-        end
-    end
+    for _, k in ipairs(b) do k:set_map() end
 end
 
 ---Set up **lua-pairs**.
 ---@param option table User configuration.
 -- | Option   | Type      | Description                            |
 -- |----------|-----------|----------------------------------------|
--- | ret      | boolean   | True to map <CR>                       |
--- | bak      | boolean   | True to map <BS> and <M-BS>            |
--- | spc      | boolean   | True to map <SPACE>                    |
 -- | extd     | hashtable | To extend the default pairs            |
--- | extd_map | hashtable | To define key bindings of extend pairs |
 -- | exclude  | table     | Excluded buffer types and file types   |
 function M.setup(option)
-    opt = option or {}
+    O = option or {}
 
-    local id = api.nvim_create_augroup("lp_buffer_update", {
+    local id = vim.api.nvim_create_augroup("lp_buffer_update", {
         clear = true
     })
 
-    api.nvim_create_autocmd("BufEnter", {
+    vim.api.nvim_create_autocmd("BufEnter", {
         group = id,
         pattern = "*",
-        callback = M.def_all
+        callback = set_all
     })
 
-    api.nvim_create_autocmd("FileType", {
+    vim.api.nvim_create_autocmd("FileType", {
         group = id,
         pattern = "*",
-        callback = function ()
-            M.clr_map()
-            M.def_all()
+        callback = function()
+            clr_all()
+            set_all()
         end
     })
 end
 
+function M.print()
+    vim.pretty_print(B)
+end
 
 return M
