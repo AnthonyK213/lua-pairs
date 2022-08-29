@@ -189,15 +189,15 @@ function K:set_map()
 end
 
 function K:clr_map()
-    if self.key then
-        vim.keymap.del("i", self.key, { buffer = true })
-    end
-    if self.l_side then
-        vim.keymap.del("i", self.l_side, { buffer = true })
-    end
-    if self.r_side then
-        vim.keymap.del("i", self.r_side, { buffer = true })
-    end
+    --if self.key then
+        --vim.keymap.del("i", self.key, { buffer = true })
+    --end
+    --if self.l_side then
+        --vim.keymap.del("i", self.l_side, { buffer = true })
+    --end
+    --if self.r_side then
+        --vim.keymap.del("i", self.r_side, { buffer = true })
+    --end
 end
 
 ---Check the surrounding characters of the cursor.
