@@ -1,6 +1,4 @@
 local M = {}
-
-
 local O = {}
 local L = "<C-G>U<Left>"
 local R = "<C-G>U<Right>"
@@ -91,6 +89,14 @@ local function get_ctxt()
     return context
 end
 
+---Check the surrounding characters of the cursor.
+---@param pair_table table Defined pairs to index.
+---@return boolean result True if the cursor is surrounded by `pair_table`.
+local function is_sur(pair_table)
+    local context = get_ctxt()
+    return pair_table[context.p] == context.n
+end
+
 ---@type table<integer, K[]>
 local B = {}
 
@@ -115,97 +121,6 @@ function B:is_sur()
         end
     end
     return false
-end
-
----@class K
----@field key string?
----@field l_side string
----@field r_side string
----@field mates boolean
----@field quote boolean
----@field close boolean
----@field enable function
----@field disable function
----@field specs function[]
-local K = {}
-
-K.__index = K
-
----Constructor.
----@param args table<string, string>
----@return K
-function K.new(args)
-    local specs = {}
-    local k = {
-        key = args.k,
-        l_side = args.l,
-        r_side = args.r,
-        mates = false,
-        quote = false,
-        close = false,
-        enable = args.e or __e,
-        disable = args.d or __d,
-    }
-    if k.key and M.T[k.key] then
-        table.insert(specs, M.T[k.key])
-    elseif k.l_side and k.r_side then
-        if k.l_side == k.r_side and #(k.l_side) == 1 then
-            k.quote = true
-        else
-            k.mates = true
-            if k.r_side and #k.r_side == 1 then
-                k.close = true
-            end
-        end
-    end
-    k.specs = specs
-    setmetatable(k, K)
-    return k
-end
-
-function K:set_map()
-    if not self.enable() then return end
-    local _opt = { noremap = true, expr = false, silent = true, buffer = true }
-    for _, f in ipairs(self.specs) do
-        vim.keymap.set("i", self.key, function()
-            f(self.l_side, self.r_side, self.disable)
-        end, _opt)
-    end
-    if self.close then
-        vim.keymap.set("i", self.r_side, function()
-            M.T.Close(self.l_side, self.r_side, self.disable)
-        end, _opt)
-    end
-    if self.mates then
-        vim.keymap.set("i", self.key or self.l_side, function()
-            M.T.Mates(self.l_side, self.r_side, self.disable)
-        end, _opt)
-    end
-    if self.quote then
-        vim.keymap.set("i", self.key or self.l_side, function()
-            M.T.Quote(self.l_side, self.r_side, self.disable)
-        end, _opt)
-    end
-end
-
-function K:clr_map()
-    --if self.key then
-        --vim.keymap.del("i", self.key, { buffer = true })
-    --end
-    --if self.l_side then
-        --vim.keymap.del("i", self.l_side, { buffer = true })
-    --end
-    --if self.r_side then
-        --vim.keymap.del("i", self.r_side, { buffer = true })
-    --end
-end
-
----Check the surrounding characters of the cursor.
----@param pair_table table Defined pairs to index.
----@return boolean result True if the cursor is surrounded by `pair_table`.
-local function is_sur(pair_table)
-    local context = get_ctxt()
-    return pair_table[context.p] == context.n
 end
 
 ---Actions on <CR>.
@@ -323,7 +238,7 @@ local function lp_quote(l_side, _, disable)
     end
 end
 
-M.T = {
+local T = {
     Mates = lp_mates,
     Quote = lp_quote,
     Close = lp_close,
@@ -333,15 +248,75 @@ M.T = {
     ["<SPACE>"] = lp_space,
 }
 
----Clear key maps of current buffer.
-local function clr_all()
-    local ks = B:get()
-    if ks then
-        for _, k in ipairs(ks) do
-            k:clr_map()
+---@class K
+---@field key string?
+---@field l_side string
+---@field r_side string
+---@field mates boolean
+---@field quote boolean
+---@field close boolean
+---@field enable function
+---@field disable function
+---@field specs function[]
+local K = {}
+
+K.__index = K
+
+---Constructor.
+---@param args table<string, string>
+---@return K
+function K.new(args)
+    local specs = {}
+    local k = {
+        key = args.k,
+        l_side = args.l,
+        r_side = args.r,
+        mates = false,
+        quote = false,
+        close = false,
+        enable = args.e or __e,
+        disable = args.d or __d,
+    }
+    if k.key and T[k.key] then
+        table.insert(specs, T[k.key])
+    elseif k.l_side and k.r_side then
+        if k.l_side == k.r_side and #(k.l_side) == 1 then
+            k.quote = true
+        else
+            k.mates = true
+            if k.r_side and #k.r_side == 1 then
+                k.close = true
+            end
         end
     end
-    B:set(nil)
+    k.specs = specs
+    setmetatable(k, K)
+    return k
+end
+
+function K:set_map()
+    if not self.enable() then return end
+    local _opt = { noremap = true, expr = false, silent = true, buffer = true }
+    for _, f in ipairs(self.specs) do
+        vim.keymap.set("i", self.key, function()
+            f(self.l_side, self.r_side, self.disable)
+        end, _opt)
+    end
+    if self.close then
+        vim.keymap.set("i", self.r_side, function()
+            T.Close(self.l_side, self.r_side, self.disable)
+        end, _opt)
+    end
+    if self.mates then
+        vim.keymap.set("i", self.key or self.l_side, function()
+            T.Mates(self.l_side, self.r_side, self.disable)
+        end, _opt)
+    end
+    if self.quote then
+        vim.keymap.set("i", self.key or self.l_side, function()
+            T.Quote(self.l_side, self.r_side, self.disable)
+        end, _opt)
+    end
 end
 
 ---Define variables and key maps in current buffer.
@@ -397,29 +372,12 @@ end
 -- | exclude  | table     | Excluded buffer types and file types   |
 function M.setup(option)
     O = option or {}
-
-    local id = vim.api.nvim_create_augroup("lp_buffer_update", {
-        clear = true
-    })
-
-    vim.api.nvim_create_autocmd("BufEnter", {
+    local id = vim.api.nvim_create_augroup("lp_buffer_update", { clear = true })
+    vim.api.nvim_create_autocmd({ "BufEnter", "FileType" }, {
         group = id,
         pattern = "*",
         callback = set_all
     })
-
-    vim.api.nvim_create_autocmd("FileType", {
-        group = id,
-        pattern = "*",
-        callback = function()
-            clr_all()
-            set_all()
-        end
-    })
-end
-
-function M.print()
-    vim.pretty_print(B)
 end
 
 return M
