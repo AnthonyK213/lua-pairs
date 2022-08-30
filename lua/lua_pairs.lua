@@ -17,7 +17,8 @@ local C = {
     end, d = function(context)
         return context.p == "\\"
             or (vim.bo.ft == "rust"
-                and vim.tbl_contains({ "<", "&" }, context.p))
+                and (vim.tbl_contains({ "<", "&" }, context.p)
+                    or context.n == ">"))
     end },
     { l = "<", r = ">", e = function()
         return vim.tbl_contains({ "html", "xml" }, vim.bo.ft)
@@ -102,7 +103,7 @@ function M.setup(option)
     vim.api.nvim_create_autocmd("FileType", {
         group = id,
         pattern = "*",
-        callback = function () clr() set() end
+        callback = function() clr() set() end
     })
 end
 
