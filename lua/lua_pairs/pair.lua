@@ -40,7 +40,7 @@ function P.new(args)
     if p.key and T[p.key] then
         table.insert(specs, T[p.key])
     elseif p.l_side and p.r_side then
-        if p.l_side == p.r_side and #(p.l_side) == 1 then
+        if p.key or (not p.key and p.l_side == p.r_side and #(p.l_side) == 1) then
             p.quote = true
         else
             p.mates = true

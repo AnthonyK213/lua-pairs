@@ -67,19 +67,18 @@ end
 ---Before a NAC character:
 ---  |a -> feed " -> "|a
 ---@param l_side string Left part of a pair of *quote*.
-function A.quote(l_side, _, disable)
+---@param r_side string Right part of a pair of *quote*.
+function A.quote(l_side, r_side, disable)
     local context = U.get_ctxt()
-    local prev_char = context.p
-    local next_char = context.n
-    if next_char == l_side then
-        U.feed_keys(R)
-    elseif (prev_char == l_side
-        or U.is_nac(prev_char)
-        or U.is_nac(next_char)
+    if vim.startswith(context.f, r_side) then
+        U.feed_keys(string.rep(R, #r_side))
+    elseif (vim.endswith(context.b, l_side)
+        or U.is_nac(context.p)
+        or U.is_nac(context.n)
         or disable(context)) then
         U.feed_keys(l_side)
     else
-        U.feed_keys(l_side .. l_side .. L)
+        U.feed_keys(l_side .. r_side .. string.rep(L, #r_side))
     end
 end
 
@@ -87,7 +86,7 @@ end
 ---Inside a pair of braces:
 ---  {|} -> feed <SPACE> -> { | }
 function A.space(_, _, _)
-    local keys = U.is_sur({ ["{"] = "}" }) and "<SPACE><SPACE>" .. L or "<SPACE>"
+    local keys = U.is_sur({ ["{"] = "}" }) and "  " .. L or " "
     U.feed_keys(keys)
 end
 
