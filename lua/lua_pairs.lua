@@ -36,7 +36,7 @@ local function clr()
             p:del_map()
         end
     end
-    B:set(nil)
+    B:set()
 end
 
 ---Set variables and keymaps to current buffer.

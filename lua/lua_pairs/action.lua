@@ -49,8 +49,9 @@ end
 ---  |a -> feed ( -> (|a
 ---@param l_side string Left part of a pair of *mates*.
 ---@param r_side string Right part of a pair of *mates*.
-function A.mates(l_side, r_side, _)
-    if U.is_nac(U.get_ctxt().n) then
+function A.mates(l_side, r_side, disable)
+    local context = U.get_ctxt()
+    if U.is_nac(context.n) or disable(context) then
         U.feed_keys(l_side)
     else
         U.feed_keys(l_side .. r_side .. string.rep(L, #r_side))

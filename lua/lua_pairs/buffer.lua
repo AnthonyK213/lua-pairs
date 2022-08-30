@@ -10,7 +10,7 @@ function B:get(bufnr)
 end
 
 ---Set pairs for the buffer.
----@param p_list P[] Pairs to set for the buffer.
+---@param p_list? P[] Pairs to set for the buffer.
 ---@param bufnr? integer Buffer number.
 function B:set(p_list, bufnr)
     bufnr = bufnr or vim.api.nvim_get_current_buf()
