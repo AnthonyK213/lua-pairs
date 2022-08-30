@@ -7,9 +7,14 @@ local U = require("lua_pairs.util")
 ---Inside a defined pair:
 ---  (|) -> feed ) -> ()|
 ---@param r_side string Right part of a pair of *mates*.
-function A.close(_, r_side, _)
-    local keys = U.get_ctxt().n == r_side and R or r_side
-    U.feed_keys(keys)
+---@param disable function If true, just input `r_side`.
+function A.close(_, r_side, disable)
+    local context = U.get_ctxt()
+    if context.n == r_side and not disable(context) then
+        U.feed_keys(R)
+    else
+        U.feed_keys(r_side)
+    end
 end
 
 ---Actions on <BS>.
@@ -49,6 +54,7 @@ end
 ---  |a -> feed ( -> (|a
 ---@param l_side string Left part of a pair of *mates*.
 ---@param r_side string Right part of a pair of *mates*.
+---@param disable function If true, just input `l_side`.
 function A.mates(l_side, r_side, disable)
     local context = U.get_ctxt()
     if U.is_nac(context.n) or disable(context) then
@@ -70,7 +76,7 @@ end
 ---  |a -> feed " -> "|a
 ---@param l_side string Left part of a pair of *quote*.
 ---@param r_side string Right part of a pair of *quote*.
----@param disable function If true, just input the key.
+---@param disable function If true, just input `l_side`.
 function A.quote(l_side, r_side, disable)
     local context = U.get_ctxt()
     if l_side == r_side and vim.startswith(context.f, r_side) then
