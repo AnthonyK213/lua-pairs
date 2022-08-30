@@ -102,12 +102,12 @@ function A.supbs(_, _, _)
     local back = context.b
     local fore = context.f
     local res = { false, 0, 0 }
-    for _, k in ipairs(B:get()) do
-        if k.l_side and k.r_side
-            and vim.endswith(back, k.l_side)
-            and vim.startswith(fore, k.r_side)
-            and #k.l_side + #k.r_side > res[2] + res[3] then
-            res = { true, #k.l_side, #k.r_side }
+    for _, p in ipairs(B:get()) do
+        if p.l_side and p.r_side
+            and vim.endswith(back, p.l_side)
+            and vim.startswith(fore, p.r_side)
+            and #p.l_side + #p.r_side > res[2] + res[3] then
+            res = { true, #p.l_side, #p.r_side }
         end
     end
     if res[1] then

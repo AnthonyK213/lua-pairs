@@ -54,9 +54,10 @@ function P.new(args)
     return p
 end
 
-function P:set_map()
+function P:set_map(bufnr)
     if not self.enable() then return end
-    local _opt = { noremap = true, expr = false, silent = true, buffer = true }
+    bufnr = bufnr or vim.api.nvim_get_current_buf()
+    local _opt = { noremap = true, expr = false, silent = true, buffer = bufnr }
     for _, f in ipairs(self.specs) do
         vim.keymap.set("i", self.key, function()
             f(self.l_side, self.r_side, self.disable)
