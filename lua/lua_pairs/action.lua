@@ -48,6 +48,7 @@ end
 ---Before a NAC character:
 ---  |a -> feed ( -> (|a
 ---@param l_side string Left part of a pair of *mates*.
+---@param r_side string Right part of a pair of *mates*.
 function A.mates(l_side, r_side, _)
     if U.is_nac(U.get_ctxt().n) then
         U.feed_keys(l_side)
@@ -68,9 +69,10 @@ end
 ---  |a -> feed " -> "|a
 ---@param l_side string Left part of a pair of *quote*.
 ---@param r_side string Right part of a pair of *quote*.
+---@param disable function If true, just input the key.
 function A.quote(l_side, r_side, disable)
     local context = U.get_ctxt()
-    if vim.startswith(context.f, r_side) then
+    if l_side == r_side and vim.startswith(context.f, r_side) then
         U.feed_keys(string.rep(R, #r_side))
     elseif (vim.endswith(context.b, l_side)
         or U.is_nac(context.p)

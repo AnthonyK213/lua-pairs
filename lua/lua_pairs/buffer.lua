@@ -1,3 +1,4 @@
+---@type table<integer, P[]>
 local B = {}
 
 function B:get()
@@ -9,12 +10,12 @@ function B:set(ks)
 end
 
 function B:is_sur(context)
-    local ks = self:get()
-    if ks then
-        for _, k in ipairs(ks) do
-            if k.l_side and k.r_side
-                and vim.endswith(context.b, k.l_side)
-                and vim.startswith(context.f, k.r_side) then
+    local ps = self:get()
+    if ps then
+        for _, p in ipairs(ps) do
+            if p.l_side and p.r_side
+                and vim.endswith(context.b, p.l_side)
+                and vim.startswith(context.f, p.r_side) then
                 return true
             end
         end
