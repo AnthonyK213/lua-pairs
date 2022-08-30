@@ -28,8 +28,19 @@ local C = {
     { k = "<SPACE>" },
 }
 
----Define variables and key maps in current buffer.
-local function set_all()
+---Remove variables and keymaps from current buffer.
+local function clr()
+    local p_list = B:get()
+    if p_list then
+        for _, p in ipairs(p_list) do
+            p:del_map()
+        end
+    end
+    B:set(nil)
+end
+
+---Set variables and keymaps to current buffer.
+local function set()
     local exclude = O.exclude or {}
     local buftype = exclude.buftype or {}
     local filetype = exclude.filetype or {}
@@ -83,10 +94,15 @@ end
 function M.setup(option)
     O = option or {}
     local id = vim.api.nvim_create_augroup("lp_buffer_update", { clear = true })
-    vim.api.nvim_create_autocmd({ "BufEnter", "FileType" }, {
+    vim.api.nvim_create_autocmd("BufEnter", {
         group = id,
         pattern = "*",
-        callback = set_all
+        callback = set
+    })
+    vim.api.nvim_create_autocmd("FileType", {
+        group = id,
+        pattern = "*",
+        callback = function () clr() set() end
     })
 end
 

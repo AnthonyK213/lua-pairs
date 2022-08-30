@@ -9,9 +9,9 @@ local T = {
 }
 
 ---@class P
----@field key string?
----@field l_side string?
----@field r_side string?
+---@field key? string LHS
+---@field l_side? string Left side of the pair.
+---@field r_side? string Right side of the pair.
 ---@field mates boolean
 ---@field quote boolean
 ---@field close boolean
@@ -54,6 +54,8 @@ function P.new(args)
     return p
 end
 
+---Set keymaps to buffer.
+---@param bufnr? integer Buffer number.
 function P:set_map(bufnr)
     if not self.enable() then return end
     bufnr = bufnr or vim.api.nvim_get_current_buf()
@@ -77,6 +79,19 @@ function P:set_map(bufnr)
         vim.keymap.set("i", self.key or self.l_side, function()
             A.quote(self.l_side, self.r_side, self.disable)
         end, _opt)
+    end
+end
+
+---Delete keymaps from buffer.
+---@param bufnr? integer Buffer number.
+function P:del_map(bufnr)
+    bufnr = bufnr or vim.api.nvim_get_current_buf()
+    -- pcall!
+    if self.mates or self.quote then
+        pcall(vim.keymap.del, "i", self.key or self.l_side, { buffer = bufnr })
+    end
+    if self.close then
+        pcall(vim.keymap.del, "i", self.r_side, { buffer = bufnr })
     end
 end
 
