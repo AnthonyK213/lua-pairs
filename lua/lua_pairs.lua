@@ -105,6 +105,8 @@ function M.setup(option)
         pattern = "*",
         callback = function() clr() set() end
     })
+    -- Set keymaps on setup.
+    set()
 end
 
 return M
