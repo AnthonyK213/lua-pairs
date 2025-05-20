@@ -1,20 +1,21 @@
-local A = {}
 local L = "<C-G>U<Left>"
 local R = "<C-G>U<Right>"
 local B = require("lua_pairs.buffer")
 local U = require("lua_pairs.util")
+
+local A = {}
 
 ---Inside a defined pair:
 ---  (|) -> feed ) -> ()|
 ---@param r_side string Right part of a pair of *mates*.
 ---@param disable function If true, just input `r_side`.
 function A.close(_, r_side, disable)
-    local context = U.get_ctxt()
-    if context.n == r_side and not disable(context) then
-        U.feed_keys(R)
-    else
-        U.feed_keys(r_side)
-    end
+  local context = U.get_ctxt()
+  if context.n == r_side and not disable(context) then
+    U.feed_keys(R)
+  else
+    U.feed_keys(r_side)
+  end
 end
 
 ---Actions on <BS>.
@@ -23,28 +24,28 @@ end
 ---Inside a pair of barces with one space:
 ---  { | } -> feed <BS> -> {|}
 function A.backs(_, _, _)
-    local context = U.get_ctxt()
-    if B:is_sur(context) then
-        U.feed_keys(R .. "<BS><BS>")
-    elseif context.b:match("{%s$") and context.f:match("^%s}") then
-        U.feed_keys [[<C-\><C-O>"_diB]]
-    else
-        U.feed_keys [[<BS>]]
-    end
+  local context = U.get_ctxt()
+  if B.is_sur(context) then
+    U.feed_keys(R .. "<BS><BS>")
+  elseif context.b:match("{%s$") and context.f:match("^%s}") then
+    U.feed_keys [[<C-\><C-O>"_diB]]
+  else
+    U.feed_keys [[<BS>]]
+  end
 end
 
 ---Actions on <CR>.
 ---Inside a pair of brackets:
 ---  {|} -> feed <CR> -> {<br>|<br>}
 function A.enter(_, _, _)
-    local context = U.get_ctxt()
-    if B:is_sur(context) then
-        U.feed_keys [[<CR><C-\><C-O>O]]
-    elseif context.b:match("{%s*$") and context.f:match("^%s*}") then
-        U.feed_keys [[<C-\><C-O>"_diB<CR><C-\><C-O>O]]
-    else
-        U.feed_keys [[<CR>]]
-    end
+  local context = U.get_ctxt()
+  if B.is_sur(context) then
+    U.feed_keys [[<CR><C-\><C-O>O]]
+  elseif context.b:match("{%s*$") and context.f:match("^%s*}") then
+    U.feed_keys [[<C-\><C-O>"_diB<CR><C-\><C-O>O]]
+  else
+    U.feed_keys [[<CR>]]
+  end
 end
 
 ---Complete *mates*:
@@ -56,12 +57,12 @@ end
 ---@param r_side string Right part of a pair of *mates*.
 ---@param disable function If true, just input `l_side`.
 function A.mates(l_side, r_side, disable)
-    local context = U.get_ctxt()
-    if U.is_nac(context.n) or disable(context) then
-        U.feed_keys(l_side)
-    else
-        U.feed_keys(l_side .. r_side .. string.rep(L, #r_side))
-    end
+  local context = U.get_ctxt()
+  if U.is_nac(context.n) or disable(context) then
+    U.feed_keys(l_side)
+  else
+    U.feed_keys(l_side .. r_side .. string.rep(L, #r_side))
+  end
 end
 
 ---Complete *quote*:
@@ -78,25 +79,25 @@ end
 ---@param r_side string Right part of a pair of *quote*.
 ---@param disable function If true, just input `l_side`.
 function A.quote(l_side, r_side, disable)
-    local context = U.get_ctxt()
-    if l_side == r_side and vim.startswith(context.f, r_side) then
-        U.feed_keys(string.rep(R, #r_side))
-    elseif (vim.endswith(context.b, l_side)
+  local context = U.get_ctxt()
+  if l_side == r_side and vim.startswith(context.f, r_side) then
+    U.feed_keys(string.rep(R, #r_side))
+  elseif (vim.endswith(context.b, l_side)
         or U.is_nac(context.p)
         or U.is_nac(context.n)
         or disable(context)) then
-        U.feed_keys(l_side)
-    else
-        U.feed_keys(l_side .. r_side .. string.rep(L, #r_side))
-    end
+    U.feed_keys(l_side)
+  else
+    U.feed_keys(l_side .. r_side .. string.rep(L, #r_side))
+  end
 end
 
 ---Actions on <SPACE>.
 ---Inside a pair of braces:
 ---  {|} -> feed <SPACE> -> { | }
 function A.space(_, _, _)
-    local keys = U.is_sur({ ["{"] = "}" }) and "  " .. L or " "
-    U.feed_keys(keys)
+  local keys = U.is_sur({ ["{"] = "}" }) and "  " .. L or " "
+  U.feed_keys(keys)
 end
 
 ---Super backspace.
@@ -105,25 +106,25 @@ end
 ---Kill a word:
 ---  Kill a word| -> feed <M-BS> -> Kill a |
 function A.supbs(_, _, _)
-    local context = U.get_ctxt()
-    local back = context.b
-    local fore = context.f
-    local res = { false, 0, 0 }
-    for _, p in ipairs(B:get() or {}) do
-        if p.l_side and p.r_side
-            and vim.endswith(back, p.l_side)
-            and vim.startswith(fore, p.r_side)
-            and #p.l_side + #p.r_side > res[2] + res[3] then
-            res = { true, #p.l_side, #p.r_side }
-        end
+  local context = U.get_ctxt()
+  local back = context.b
+  local fore = context.f
+  local res = { false, 0, 0 }
+  for _, p in ipairs(B.get() or {}) do
+    if p.l_side and p.r_side
+        and vim.endswith(back, p.l_side)
+        and vim.startswith(fore, p.r_side)
+        and #p.l_side + #p.r_side > res[2] + res[3] then
+      res = { true, #p.l_side, #p.r_side }
     end
-    if res[1] then
-        U.feed_keys(string.rep(L, res[2]) .. string.rep("<Del>", res[2] + res[3]))
-    elseif back:match("{%s*$") and fore:match("^%s*}") then
-        U.feed_keys [[<C-\><C-O>"_diB]]
-    else
-        U.feed_keys [[<C-\><C-O>"_db]]
-    end
+  end
+  if res[1] then
+    U.feed_keys(string.rep(L, res[2]) .. string.rep("<Del>", res[2] + res[3]))
+  elseif back:match("{%s*$") and fore:match("^%s*}") then
+    U.feed_keys [[<C-\><C-O>"_diB]]
+  else
+    U.feed_keys [[<C-\><C-O>"_db]]
+  end
 end
 
 return A
